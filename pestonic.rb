@@ -9,7 +9,7 @@ class Scraping
 	attr_accessor :uri, :file
 
 	def initialize(uri = ARGV[0], file = ARGV[1])
-
+		puts "Scraping, #{ARGV[0]}"
 		@uri = uri
 		@file = file
 		@curl = Curl::Easy.new
@@ -18,18 +18,25 @@ class Scraping
 
 	def run
 		doc = download_page(@uri)
+		puts "Download: #{ARGV[0]}"
+		puts "We build Nokogiri..."
+		puts "Parsing page 1"
 		parsing_page(doc)
 		(2..3).each do |page|
-			doc = download_page("https://www.petsonic.com/snacks-huesos-para-perros/?p=#{page}")
+			puts "Parsing page #{page}"
+			doc = download_page("#{ARGV[0]}?p=#{page}")
 			parsing_page(doc)
 		end
+		puts "-" * 80
 		print_products
+		puts "Add result file #{ARGV[1]}"
 		write_to_csv	
 	end
 
 	def download_page(url)
 		@curl.url = url
 		@curl.perform
+		
 		Nokogiri::HTML(@curl.body_str)
 	end
 
@@ -71,6 +78,11 @@ class Scraping
 		end	
 	end
 
+end
+
+if ARGV.empty?
+	puts "ruby pestonic.rb a b. Please, pass the parameters to the script a: link to the category page (any category of the site can be transmitted),
+	b: the name of the file in which the result will be written"
 end
 
 Scraping.new.run
