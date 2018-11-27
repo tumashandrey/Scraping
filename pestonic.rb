@@ -1,10 +1,15 @@
+#url = "https://www.petsonic.com/snacks-huesos-para-perros/"
+
 require 'curb'
 require 'nokogiri'
+require 'uri'
+require 'csv'
 
 class Scraping
 	attr_accessor :uri, :file
 
-	def initialize(uri = "https://www.petsonic.com/snacks-huesos-para-perros/", file = "Petsonic_CSV.csv")
+	def initialize(uri = ARGV[0], file = ARGV[1])
+
 		@uri = uri
 		@file = file
 		@curl = Curl::Easy.new
@@ -14,12 +19,12 @@ class Scraping
 	def run
 		doc = download_page(@uri)
 		parsing_page(doc)
-		#(2..3).each do |page|
-			#doc = download_page("https://www.petsonic.com/snacks-huesos-para-perros/?p=#{page}")
-			#parsing_page(doc)
-		#end
+		(2..3).each do |page|
+			doc = download_page("https://www.petsonic.com/snacks-huesos-para-perros/?p=#{page}")
+			parsing_page(doc)
+		end
 		print_products
-		#write_to_csv	
+		write_to_csv	
 	end
 
 	def download_page(url)
@@ -30,6 +35,7 @@ class Scraping
 
 	def parsing_page(doc)
 		doc.xpath("//ul[@id='product_list']/li[contains(@class,'ajax_block_product')]//h2/a/@href").each do |product_link|
+
 			page = download_page(product_link)
 			product_name = page.xpath("//h1[@itemprop='name']/text()").text
 			page.xpath(".//ul[contains(@class,'attribute_radio_list')]/li").each do |weighting|
@@ -50,7 +56,7 @@ class Scraping
 
 	def print_products
 		@products.each do |product|
-			puts "Name:  #{product[:name]}"
+			puts "Name: #{product[:name]}"
 			puts "Price: #{product[:price]}"
 			puts "Image: #{product[:img]}"
 			puts "-" * 80
