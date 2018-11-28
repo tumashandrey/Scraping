@@ -1,5 +1,6 @@
 #url = "https://www.petsonic.com/snacks-huesos-para-perros/"
-#ruby pestonic "https://www.petsonic.com/snacks-huesos-para-perros/" file.csv
+#ruby pestonic.rb "https://www.petsonic.com/snacks-huesos-para-perros/" file_name.csv
+
 require 'curb'
 require 'nokogiri'
 require 'csv'
@@ -8,15 +9,16 @@ class Scraping
 
 	attr_accessor :uri, :file
 
-	def initialize(uri = ARGV[0], file = ARGV[1])
+	def initialize(uri, file)
 
-		puts "Scraping, #{ARGV[0]}"
 		@uri = uri
 		@file = file
+		puts "Scraping url, #{@uri}"
 		@curl = Curl::Easy.new do |curl|
 			curl.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36"
 			curl.headers["Accept-Language"] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
 		end
+
 		@products = Array.new
 
 	end
@@ -24,19 +26,23 @@ class Scraping
 	def run
 
 		doc = download_page(@uri)
-		puts "Download: #{ARGV[0]}"
+		puts "Download: #{@uri}"
 		puts "We build Nokogiri..."
+		puts "Max pages: #{get_max_page(doc)}"
 		puts "Parsing page 1"
 		parsing_page(doc)
-		(2..10).each do |page|
+		
+		(2..get_max_page(doc)).each do |page|
 			puts "Parsing page #{page}"
-			doc = download_page("#{ARGV[0]}?p=#{page}")
+			doc = download_page("#{@uri}?p=#{page}")
 			parsing_page(doc)
 		end
+
 		puts "-" * 80
 		puts "Number products: #{@products.size}"
-		puts "Add result file #{ARGV[1]}"
 		write_to_csv
+		puts "Add result file #{@file}"
+
 
 	end
 
@@ -44,9 +50,12 @@ class Scraping
 
 		@curl.url = url
 		@curl.perform
-		
 		Nokogiri::HTML(@curl.body_str)
 
+	end
+
+	def get_max_page(doc)
+		doc.xpath("(//ul[contains(@class,'pagination')]/li)[last()-1]").text.to_i
 	end
 
 	def parsing_page(doc)
@@ -54,16 +63,16 @@ class Scraping
 		doc.xpath("//ul[@id='product_list']/li[contains(@class,'ajax_block_product')]//h2/a/@href").each do |product_link|
 
 			page = download_page(product_link)
-			product_name = page.xpath("//h1[@itemprop='name']/text()").text
+			product_name = page.xpath("//h1[@itemprop='name']/text()").text.strip
 			page.xpath(".//ul[contains(@class,'attribute_radio_list')]/li").each do |weighting|
-				
+
 				product = Hash.new
 
-				weightings_name = weighting.xpath(".//span[@class='radio_label']").text
+				weightings_name = weighting.xpath(".//span[@class='radio_label']").text.strip
 
 				product[:name] = product_name + " - " + weightings_name
-				product[:price] = weighting.xpath(".//span[@class='price_comb']").text[/(\d+[.,\d]\d+)/]
-				product[:img] = page.xpath(".//img[@id='bigpic']/@src").text
+				product[:price] = weighting.xpath(".//span[@class='price_comb']").text[/([.,\d]+)/].strip
+				product[:image] = page.xpath(".//img[@id='bigpic']/@src").text.strip
 
 				@products << product
 
@@ -75,9 +84,9 @@ class Scraping
 
 		CSV.open(@file, "w", write_headers: true, headers: @products.last.keys) do |csv|
 			@products.each do |product|
-				csv << product.values	
+				csv << product.values
 			end
-		end	
+		end
 	end
 
 end
@@ -89,4 +98,4 @@ if ARGV.empty?
 
 end
 
-Scraping.new.run
+Scraping.new(ARGV[0],ARGV[1]).run
