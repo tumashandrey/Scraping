@@ -17,6 +17,7 @@ class Scraping
 		@curl = Curl::Easy.new do |curl|
 			curl.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36"
 			curl.headers["Accept-Language"] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+			curl.enable_cookies = true
 		end
 
 		@products = Array.new
@@ -55,6 +56,7 @@ class Scraping
 	end
 
 	def get_max_page(doc)
+		
 		doc.xpath("(//ul[contains(@class,'pagination')]/li)[last()-1]").text.to_i
 	end
 
